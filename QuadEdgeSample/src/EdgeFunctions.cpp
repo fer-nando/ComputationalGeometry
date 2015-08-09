@@ -131,7 +131,7 @@ int getFaceOrder(Edge *e) {
 	return count;
 }
 
-int getFaceOrder(Edge *e, vector<Point>& pts) {
+int getFaceOrder(Edge *e, vector<Vertex>& pts) {
 	int count = 1;
 	Edge *iter = e->Lnext();
 
@@ -144,11 +144,11 @@ int getFaceOrder(Edge *e, vector<Point>& pts) {
 	}
 
 	pts.clear();
-	pts.push_back(e->Orig()->p);
+	pts.push_back(*e->Orig());
 
 	while (iter != e && count < 100) {
 		count++;
-		pts.push_back(iter->Orig()->p);
+		pts.push_back(*iter->Orig());
 		iter = iter->Lnext();
 	}
 
@@ -161,11 +161,41 @@ int getFaceOrder(Edge *e, vector<Point>& pts) {
 }
 
 
-Point *getPointsFromVertexList(vector<Vertex *>& vertexList) {
+Point *getPointsFromVertexList(vector<Vertex>& vertexList) {
 	int i;
 	Point * pts = new Point[vertexList.size()];
 	for (i = 0; i < vertexList.size(); i++) {
-		pts[i] = vertexList[i]->p;
+		pts[i] = vertexList[i].p;
 	}
 	return pts;
+}
+
+
+Edge * splitFace(Face *fl, Vertex *v1, Vertex *v2) {
+
+	Face *fr = new Face();
+
+	cout << "  split vertices: " << v1->p << "-" << v2->p << endl;
+	Edge *a = v1->getEdge();
+	Edge *b = v2->getEdge();
+	Edge *c = Edge::makeEdge(v1, v2, fl, fr);
+
+	while (a->Left() != fl) { a = a->Onext(); }
+	while (b->Left() != fl) { b = b->Onext(); }
+
+	Edge::splice(a, c);
+	Edge::splice(b, c->Sym());
+
+	Edge *cIter = c->Lnext();
+	while (cIter != c) {
+		cIter->setLeft(fl);
+		cIter = cIter->Lnext();
+	}
+	cIter = c->Rnext();
+	while (cIter != c) {
+		cIter->setRight(fr);
+		cIter = cIter->Rnext();
+	}
+
+	return c;
 }

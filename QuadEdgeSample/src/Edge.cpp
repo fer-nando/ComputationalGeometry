@@ -84,7 +84,7 @@ void Edge::setOrig(Vertex* orig) {
 	orig->setEdge(this);
 }
 
-Vertex* Edge::Orig() {
+Vertex* Edge::Orig() const {
 	return orig;
 }
 

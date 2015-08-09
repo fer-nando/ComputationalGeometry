@@ -15,6 +15,7 @@ class QuadEdge;
 class Vertex;
 class Face;
 
+#include <iostream>
 using namespace cv;
 
 
@@ -34,7 +35,7 @@ public:
 	~Edge();
 
 	void setOrig(Vertex *orig);
-	Vertex *Orig();
+	Vertex *Orig() const;
 	void setDest(Vertex *dest);
 	Vertex *Dest();
 	void setLeft(Face *left);
@@ -76,17 +77,28 @@ public:
 	Vertex() {
 		p = cv::Point(0,0);
 		edge = NULL;
+		type = -1;
 	}
 	Vertex(int x, int y) {
 		this->p = cv::Point(x,y);
 		edge = NULL;
+		type = -1;
 	}
 	~Vertex() {}
 
 	void setEdge(Edge *e) { edge = e; }
 	Edge *getEdge() { return edge; }
+	int getType() {	return type; }
+	void setType(int type) { this->type = type; }
+
+	Edge *getEdge(Face *f) {
+		while (edge->Left() == NULL)
+			edge = edge->Onext();
+		return edge;
+	}
 
 private:
+	int type;
 	Edge *edge;
 
 };

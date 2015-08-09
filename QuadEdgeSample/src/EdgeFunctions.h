@@ -14,11 +14,12 @@
 int getVertexOrder(Edge *e);
 int getVertexOrder(Edge *e, cv::vector<cv::Point>& pts);
 int getFaceOrder(Edge *e);
-int getFaceOrder(Edge *e, cv::vector<cv::Point>& pts);
-Point *getPointsFromVertexList(vector<Vertex *>& vertexList);
+int getFaceOrder(Edge *e, cv::vector<Vertex>& pts);
+Point *getPointsFromVertexList(vector<Vertex>& vertexList);
 Edge *getVerticesEdge(Vertex *v1, Vertex *v2);
 Point getFaceCentroid(Face *f);
 int leftOn(Point a, Point b, Point c);
 
+Edge * splitFace(Face *f, Vertex *v1, Vertex *v2);
 
 #endif /* EDGEFUNCTIONS_H_ */
