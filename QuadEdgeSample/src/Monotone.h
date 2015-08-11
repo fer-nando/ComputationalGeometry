@@ -17,16 +17,18 @@
 #include "MeshGenerator.h"
 
 
-class VertexComp {
+class EdgeCompY {
 public:
-  bool operator() (const Vertex * lhs, const Vertex * rhs) const
+  bool operator() (const Edge* lhs, const Edge* rhs) const
   {
-  	if (lhs->p.y < rhs->p.y) {
+  	Vertex *v1 = lhs->Orig();
+  	Vertex *v2 = rhs->Orig();
+  	if (v1->p.y < v2->p.y) {
   		return false;
-  	} else if (rhs->p.y < lhs->p.y) {
+  	} else if (v2->p.y < v1->p.y) {
   		return true;
   	} else {
-  		if (lhs->p.x <= rhs->p.x)
+  		if (v1->p.x <= v2->p.x)
   			return false;
   		else
   			return true;
@@ -34,7 +36,7 @@ public:
   }
 };
 
-class EdgeComp {
+class EdgeCompX {
 public:
   bool operator() (const Edge* lhs, const Edge* rhs) const
   {
@@ -54,12 +56,12 @@ public:
 };
 
 
-typedef std::priority_queue<Vertex *,std::vector<Vertex *>,VertexComp> PriorityQueue;
+typedef std::priority_queue<Edge *,std::vector<Edge *>,EdgeCompY> PriorityQueue;
 
 class Monotone {
 
 public:
-	Monotone(Mesh &mesh, Mat &img);
+	Monotone(Mesh *mesh, Mat &img);
 	virtual ~Monotone();
 
 	void makeMonotone(Face &f);
@@ -67,24 +69,25 @@ public:
 private:
 	bool visual;
 	Mat src_img;
-	Mesh mesh;
+	Mesh *mesh;
 	PriorityQueue queue;
-	std::set<Edge *,EdgeComp> tree;
-	std::map<Edge *,Vertex *,EdgeComp> helper;
+	std::set<Edge *,EdgeCompX> tree;
+	std::map<Edge *,Vertex *,EdgeCompX> helper;
 	std::vector<Edge *> newEdges;
 	const char* iter_window = "MakeMonotone iterativo";
 
-	int  findVertexType(Vertex &v, Face &f);
-	Edge* findLeftEdge(Vertex &v, Face &f);
-	Edge* findRightEdge(Vertex &v, Face &f);
-	void handleStartVertex(Vertex &v, Face &f);
-	void handleEndVertex(Vertex &v, Face &f);
-	void handleSplitVertex(Vertex &v, Face &f);
-	void handleMergeVertex(Vertex &v, Face &f);
-	void handleRegularVertex(Vertex &v, Face &f);
+	int  findVertexType(Edge *e);
+	Edge* findLeftEdge(Edge *e);
+	Edge* findRightEdge(Edge *e);
+	void handleStartVertex(Edge *e);
+	void handleEndVertex(Edge *e);
+	void handleSplitVertex(Edge *e);
+	void handleMergeVertex(Edge *e);
+	void handleRegularVertex(Edge *e);
 	void showVertex(Mat &img, Vertex &v, const Scalar &color);
 	void showTree(Mat &img);
 	void showNewEdges(Mat &img);
+	void insertNewEdge(Face *f, Vertex *v1, Vertex *v2);
 };
 
 #endif /* MONOTONE_H_ */

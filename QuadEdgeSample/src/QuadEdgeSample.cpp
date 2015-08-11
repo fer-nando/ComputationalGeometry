@@ -14,6 +14,7 @@
 #include "Edge.h"
 #include "MeshGenerator.h"
 #include "EdgeFunctions.h"
+#include "DrawFunctions.h"
 #include "Monotone.h"
 
 using namespace cv;
@@ -40,8 +41,6 @@ Edge *e;
 Mesh mesh;
 
 const int size = 800;
-const int width = size / 200;
-const int radius = 2 * width;
 
 const char* main_window = "Mesh original";
 const char* iter_window = "Quad-edge iterativo";
@@ -55,21 +54,9 @@ const int twin_key = 's';
 const int next_key = 'a';
 const int prev_key = 'd';
 
-const Scalar default_face_color = Scalar(255, 200, 200);
-const Scalar highlight_face_color = Scalar(255, 0, 0);
-const Scalar default_vertex_color = Scalar(0, 0, 0);
-const Scalar highlight_vertex_color = Scalar(0, 0, 255);
-const Scalar default_edge_color = Scalar(0, 0, 0);
-const Scalar highlight_edge_color = Scalar(0, 0, 255);
-const Scalar default_next_color = Scalar(0, 0, 0);
-const Scalar highlight_next_color = Scalar(0, 255, 0);
 
 /// Function Headers
 void help();
-void drawPolygon(Mat img, Point *v, int npts, const Scalar cFill,
-		const Scalar cLine, const Scalar cPoint);
-void drawMesh(Mat src, vector<Face *>& faceList, bool step = false, int delay =
-		1000);
 
 void CallBackFunc(int event, int x, int y, int flags, void* ptr) {
 
@@ -113,21 +100,23 @@ int main(int, char** argv) {
 	}
 
 	/// Draw the mesh
-	drawMesh(src, mesh.faces);
+	drawMesh(src, mesh.faces, line_width);
 
 	/// Make monotone
-	Monotone monotone(mesh, src);
-	monotone.makeMonotone(*mesh.faces[0]);
-	/*Edge * e = splitFace(mesh.faces[0], mesh.vertices[2], mesh.vertices[6]);
-	if (e->Left() == mesh.faces[0]) {
-		mesh.faces.push_back(e->Left());
-	} else {
-		mesh.faces.push_back(e->Right());
-	}*/
+	Monotone monotone(&mesh, src);
+	int numFaces = mesh.faces.size();
+	for (int i = 0; i < numFaces; i++) {
+		monotone.makeMonotone(*mesh.faces[i]);
+	}
+
+	/// Draw the mesh
+	src = Scalar(255, 255, 255);
+	drawMesh(src, mesh.faces, line_width);
 
 	/// Choose a start point
 	e = mesh.edges[0];
 	bool e_en = true, vert_en = true, face_en = true;
+	const int radius = 2 * line_width;
 
 	/// PART 2
 
@@ -179,7 +168,7 @@ int main(int, char** argv) {
 			int faceOrder = getFaceOrder(e, pts);
 			if (faceOrder > 0) {
 				/// Highlight the polygon
-				drawPolygon(iter, getPointsFromVertexList(pts), faceOrder,
+				drawPolygon(iter, getPointsFromVertexList(pts), faceOrder, line_width,
 						highlight_face_color, default_edge_color, default_vertex_color);
 			}
 		}
@@ -187,7 +176,7 @@ int main(int, char** argv) {
 		if (e_en) {
 			Point p1 = e->Orig()->p;
 			Point p2 = e->Dest()->p;
-			arrowedLine(iter, p1, p2, highlight_next_color, width, CV_AA);
+			arrowedLine(iter, p1, p2, highlight_next_color, line_width, CV_AA);
 		}
 		/// Draw current vertex
 		if (vert_en) {
@@ -232,68 +221,6 @@ int main(int, char** argv) {
 	return 0;
 }
 
-/**
- *
- */
-void drawPolygon(Mat src, Point *pts, int npts, const Scalar cFill,
-		const Scalar cLine, const Scalar cPoint) {
-	int i;
-
-	/// Fill the polygon
-	const Point * ppts[] = { pts };
-	const int pnpts[] = { npts };
-	fillPoly(src, ppts, pnpts, 1, cFill, CV_AA);
-
-	/// Draw lines
-	for (i = 0; i < npts - 1; i++) {
-		line(src, pts[i], pts[i + 1], cLine, width, CV_AA);
-	}
-	line(src, pts[0], pts[npts - 1], cLine, width, CV_AA);
-
-	/// Draw points
-	for (i = 0; i < npts; i++) {
-		circle(src, pts[i], radius, cPoint, -1, CV_AA);
-	}
-}
-
-void drawMesh(Mat src, vector<Face *>& faceList, bool step, int delay) {
-	int i, j;
-	vector<Vertex> vertices;
-	Point *pts;
-
-	for (i = 0; i < (int) faceList.size(); i++) {
-		int faceOrder;
-
-		Edge *e = faceList[i]->getEdge();
-		faceOrder = getFaceOrder(e, vertices);
-		pts = getPointsFromVertexList(vertices);
-
-		/// Draw the first point
-		circle(src, pts[0], radius, default_vertex_color, -1);
-		for (j = 0; j < faceOrder - 1; j++) {
-			/// Draw the current line
-			line(src, pts[j], pts[j + 1], default_edge_color, width, CV_AA);
-
-			if (step) {
-				/// Show the image
-				imshow(main_window, src);
-				waitKey(delay);
-			}
-			/// Draw the next point
-			circle(src, pts[j + 1], radius, default_vertex_color, -1, CV_AA);
-		}
-
-		/// Draw the current polygon
-		drawPolygon(src, pts, faceOrder, default_face_color, default_edge_color,
-				default_vertex_color);
-
-		if (step) {
-			/// Show the image
-			imshow(main_window, src);
-		}
-	}
-	imshow(main_window, src);
-}
 
 /**
  * @function help

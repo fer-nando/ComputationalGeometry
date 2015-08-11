@@ -13,6 +13,7 @@
 #include "opencv2/contrib/contrib.hpp"
 #include "Monotone.h"
 #include "EdgeFunctions.h"
+#include "DrawFunctions.h"
 
 #define _USE_MATH_DEFINES
 #define sign(x) ((x >= 0.0 ? 1 : -1))
@@ -38,7 +39,7 @@ const char * verticeTypeName[6] = {
 		"UNDEF"
 };
 
-Monotone::Monotone(Mesh &mesh, Mat &img) {
+Monotone::Monotone(Mesh *mesh, Mat &img) {
 	this->mesh = mesh;
 	src_img = img;
 	if (!img.empty()) {
@@ -65,12 +66,11 @@ void Monotone::makeMonotone(Face &f) {
 	}
 	helper.clear();
 	tree.clear();
-	newEdges.clear();
+	//newEdges.clear();
 
 	// cria uma lista de prioridades ordenada pela coordenada y
 	do {
-		Vertex *v = e->Orig();
-		queue.push(v);
+		queue.push(e);
 		e = e->Lnext();
 	} while (e != e0);
 
@@ -78,42 +78,54 @@ void Monotone::makeMonotone(Face &f) {
 	while (!queue.empty()) {
 
 		// pega o vertice com a maior prioridade (menor y)
-		Vertex *v = queue.top();
+		Edge *e = queue.top();
+		Vertex *v = e->Orig();
 
 		// identifica o tipo do vertice
-		int type = findVertexType(*v, f);
+		int type = findVertexType(e);
 		cout << "Vertice: x=" << v->p.x << "; y=" << v->p.y << "; type=" << verticeTypeName[type] << endl;
 
 		if(visual) {
 			Mat img = src_img.clone();
+
+			vector<Vertex> pts;
+			int faceOrder = getFaceOrder(e, pts);
+			if (faceOrder > 0)
+				drawPolygon(img, getPointsFromVertexList(pts), faceOrder, line_width,
+						highlight_face_color, default_edge_color, default_vertex_color);
+			rectangle(img, Point(0,0), Point(img.cols, v->p.y), Scalar(180,180,180), CV_FILLED);
+
 			showNewEdges(img);
 			showTree(img);
 			showVertex(img, *v, Scalar(0,0,255));
+
+			addWeighted(src_img, 0.1, img, 0.9, 0, img);
+
 			imshow(iter_window, img);
-			waitKey();
+			waitKey(1000);
 		}
 
 		// chama a funcao especifica para cada tipo de vertice
 		switch(type) {
 		case START:
-			handleStartVertex(*v,f); break;
+			handleStartVertex(e); break;
 		case END:
-			handleEndVertex(*v,f); break;
+			handleEndVertex(e); break;
 		case SPLIT:
-			handleSplitVertex(*v,f); break;
+			handleSplitVertex(e); break;
 		case MERGE:
-			handleMergeVertex(*v,f); break;
+			handleMergeVertex(e); break;
 		case REGULAR:
-			handleRegularVertex(*v,f); break;
+			handleRegularVertex(e); break;
 		}
 
-		set<Edge *,EdgeComp>::iterator iter;
+		/*set<Edge *,EdgeCompX>::iterator iter;
 		cout << endl << "Tree:" << endl;
 		for (iter = tree.begin(); iter != tree.end(); iter++) {
 			Edge *e = *iter;
 			cout << "  " << e->Orig()->p << " " << e->Dest()->p << endl;
 		}
-		cout << endl;
+		cout << endl;*/
 
 		// remove o vertice atual da fila
 		queue.pop();
@@ -121,17 +133,17 @@ void Monotone::makeMonotone(Face &f) {
 
 }
 
-int Monotone::findVertexType(Vertex &v, Face &f) {
+int Monotone::findVertexType(Edge *e) {
 
-	Edge *e = v.getEdge(&f);
-	Vertex v1, v2;
+	Vertex *v1, *v2, *v3;
 
-	v1 = *(e->Lprev()->Orig());
-	v2 = *(e->Dest());
+	v1 = (e->Lprev()->Orig());
+	v2 = (e->Orig());
+	v3 = (e->Dest());
 
-	Vec3d p1(v1.p.x, v1.p.y, 0);
-	Vec3d p2(v.p.x, v.p.y, 0);
-	Vec3d p3(v2.p.x, v2.p.y, 0);
+	Vec3d p1(v1->p.x, v1->p.y, 0);
+	Vec3d p2(v2->p.x, v2->p.y, 0);
+	Vec3d p3(v3->p.x, v3->p.y, 0);
 	Vec3d a = p2-p1;
 	Vec3d b = p3-p2;
 
@@ -141,169 +153,145 @@ int Monotone::findVertexType(Vertex &v, Face &f) {
 	cout << "Angle: " << angle << endl;
 
 	if (angle <= 180) {
-		if (v1.p.y >= v.p.y && v2.p.y >= v.p.y) {
-			v.setType(START);
-		} else if (v1.p.y <= v.p.y && v2.p.y <= v.p.y) {
-			v.setType(END);
+		if (v1->p.y >= v2->p.y && v3->p.y >= v2->p.y) {
+			v2->setType(START);
+		} else if (v1->p.y <= v2->p.y && v3->p.y <= v2->p.y) {
+			v2->setType(END);
 		} else {
-			v.setType(REGULAR);
+			v2->setType(REGULAR);
 		}
 	} else {
-		if (v1.p.y >= v.p.y && v2.p.y >= v.p.y) {
-			v.setType(SPLIT);
-		} else if (v1.p.y <= v.p.y && v2.p.y <= v.p.y) {
-			v.setType(MERGE);
+		if (v1->p.y >= v2->p.y && v3->p.y >= v2->p.y) {
+			v2->setType(SPLIT);
+		} else if (v1->p.y <= v2->p.y && v3->p.y <= v2->p.y) {
+			v2->setType(MERGE);
 		} else {
-			v.setType(REGULAR);
+			v2->setType(REGULAR);
 		}
 	}
 
-	return v.getType();
+	return v2->getType();
 }
 
-void Monotone::handleStartVertex(Vertex &v, Face &f) {
-	Edge *e = v.getEdge(&f);
+void Monotone::handleStartVertex(Edge *e) {
 	tree.insert(e);
-	cout << "  inserted = " << e->Orig()->p << " " << e->Dest()->p << endl;
-	helper[e] = &v;
+	//cout << "  inserted = " << e->Orig()->p << " " << e->Dest()->p << endl;
+	helper[e] = e->Orig();
 }
 
-void Monotone::handleEndVertex(Vertex &v, Face &f) {
-	Edge *e = v.getEdge(&f)->Lprev();
+void Monotone::handleEndVertex(Edge *e) {
+	e = e->Lprev();
+	Vertex *v1 = e->Orig();
 	Vertex *v2 = helper[e];
+	Face *f = e->Left();
 	if (v2->getType() == MERGE) {
-		Edge *newEdge = splitFace(&f, &v, v2);
-		newEdges.push_back(newEdge);
-		if (newEdge->Left() == &f)
-			mesh.faces.push_back(newEdge->Left());
-		else
-			mesh.faces.push_back(newEdge->Right());
+		insertNewEdge(f, v1, v2);
 	}
 	tree.erase(e);
 	helper.erase(e);
 }
 
-void Monotone::handleSplitVertex(Vertex &v, Face &f) {
+void Monotone::handleSplitVertex(Edge *e) {
 
-	Edge *curr = v.getEdge(&f);
-	Edge *leftEdge = findLeftEdge(v,f);
+	Vertex *v = e->Orig();
+	Face *f = e->Left();
+	Edge *leftEdge = findLeftEdge(e);
 
-	Edge *newEdge = splitFace(&f, &v, helper[leftEdge]);
-	newEdges.push_back(newEdge);
-	if (newEdge->Left() == &f)
-		mesh.faces.push_back(newEdge->Left());
-	else
-		mesh.faces.push_back(newEdge->Right());
+	insertNewEdge(f, v, helper[leftEdge]);
 
-	helper[leftEdge] = &v;
+	helper[leftEdge] = v;
 
-	tree.insert(curr);
-	helper[curr] = &v;
+	tree.insert(e);
+	helper[e] = v;
 }
 
-void Monotone::handleMergeVertex(Vertex &v, Face &f) {
+void Monotone::handleMergeVertex(Edge *e) {
 
-	Edge *prev = v.getEdge(&f)->Lprev();
+	Vertex *v = e->Orig();
+	Face *f = e->Left();
+	Edge *prev = e->Lprev();
 
 	if (helper[prev]->getType() == MERGE) {
-		Edge *newEdge = splitFace(&f, &v, helper[prev]);
-		newEdges.push_back(newEdge);
-		if (newEdge->Left() == &f)
-			mesh.faces.push_back(newEdge->Left());
-		else
-			mesh.faces.push_back(newEdge->Right());
+		insertNewEdge(f, v, helper[prev]);
 	}
 
 	tree.erase(prev);
 	helper.erase(prev);
 
-	Edge *leftEdge = findLeftEdge(v,f);
+	Edge *leftEdge = findLeftEdge(e);
 
 	if (helper[leftEdge]->getType() == MERGE) {
-		Edge *newEdge = splitFace(&f, &v, helper[leftEdge]);
-		newEdges.push_back(newEdge);
-		if (newEdge->Left() == &f)
-			mesh.faces.push_back(newEdge->Left());
-		else
-			mesh.faces.push_back(newEdge->Right());
+		insertNewEdge(f, v, helper[leftEdge]);
 	}
 
-	helper[leftEdge] = &v;
+	helper[leftEdge] = v;
 
 }
 
-void Monotone::handleRegularVertex(Vertex &v, Face &f) {
+void Monotone::handleRegularVertex(Edge *e) {
 
-	Edge *curr = v.getEdge(&f);
-	Edge *prev = v.getEdge(&f)->Lprev();
-	cout << "  curr=" << curr->Orig()->p << "-" << curr->Dest()->p << endl;
-	cout << "  prev=" << prev->Orig()->p << "-" << prev->Dest()->p << endl;
+	Vertex *v = e->Orig();
+	Face *f = e->Left();
+	Edge *prev = e->Lprev();
+	//cout << "  curr=" << e->Orig()->p << "-" << e->Dest()->p << endl;
+	//cout << "  prev=" << prev->Orig()->p << "-" << prev->Dest()->p << endl;
 
 	// testa se o vertice anterior esta a cima do vertice atual
-	if (curr->Orig()->p.y >= prev->Orig()->p.y) { // sim, o poligono esta a direita de v
-		cout << "  >> direita" << endl;
+	if (e->Orig()->p.y >= prev->Orig()->p.y) { // sim, o poligono esta a direita de v
+		//cout << "  >> direita" << endl;
 		if (helper[prev]->getType() == MERGE) {
-			Edge *newEdge = splitFace(&f, &v, helper[prev]);
-			newEdges.push_back(newEdge);
-			if (newEdge->Left() == &f)
-				mesh.faces.push_back(newEdge->Left());
-			else
-				mesh.faces.push_back(newEdge->Right());
+			insertNewEdge(f, v, helper[prev]);
 		}
 		tree.erase(prev);
 		helper.erase(prev);
-		tree.insert(curr);
-		helper[curr] = &v;
+		tree.insert(e);
+		helper[e] = v;
+
 	} else { // nao, o poligono esta a esquerda de v
-		cout << "  >> esquerda" << endl;
-		Edge *leftEdge = findLeftEdge(v,f);
+
+		//cout << "  >> esquerda" << endl;
+		Edge *leftEdge = findLeftEdge(e);
 		if (helper[leftEdge]->getType() == MERGE) {
-			Edge *newEdge = splitFace(&f, &v, helper[leftEdge]);
-			newEdges.push_back(newEdge);
-			if (newEdge->Left() == &f)
-				mesh.faces.push_back(newEdge->Left());
-			else
-				mesh.faces.push_back(newEdge->Right());
+			//cout << "  split: " << v->p << "-" << helper[leftEdge]->p << endl;
+			insertNewEdge(f, v, helper[leftEdge]);
 		}
-		helper[leftEdge] = &v;
+		helper[leftEdge] = v;
 	}
 }
 
-Edge* Monotone::findLeftEdge(Vertex &v, Face &f) {
-	Edge *vertexEdge = v.getEdge(&f);
+Edge* Monotone::findLeftEdge(Edge *vertexEdge) {
 	Edge *leftEdge = *tree.begin();
-	set<Edge *,EdgeComp>::iterator iter;
-	EdgeComp comp = tree.key_comp();
-	cout << "Left edge:" << endl;
+	set<Edge *,EdgeCompX>::iterator iter;
+	EdgeCompX comp = tree.key_comp();
+	//cout << "Left edge:" << endl;
 	for (iter = tree.begin(); iter != tree.end(); iter++) {
 		Edge *e = *iter;
-		cout << "  e = " << e->Orig()->p << " " << e->Dest()->p;
+		//cout << "  e = " << e->Orig()->p << " " << e->Dest()->p;
 		if (comp(vertexEdge, e)) {
-			cout << endl;
+			//cout << endl;
 			break;
 		} else {
 			leftEdge = e;
-			cout << "  <<" << endl;
+			//cout << "  <<" << endl;
 		}
 	}
 	return leftEdge;
 }
 
-Edge* Monotone::findRightEdge(Vertex &v, Face &f) {
-	Edge *vertexEdge = v.getEdge(&f);
+Edge* Monotone::findRightEdge(Edge *vertexEdge) {
 	Edge *rightEdge = *tree.rbegin();
-	set<Edge *,EdgeComp>::reverse_iterator iter;
-	EdgeComp comp = tree.key_comp();
-	cout << "Right edge:" << endl;
+	set<Edge *,EdgeCompX>::reverse_iterator iter;
+	EdgeCompX comp = tree.key_comp();
+	//cout << "Right edge:" << endl;
 	for (iter = tree.rbegin(); iter != tree.rend(); iter++) {
 		Edge *e = *iter;
-		cout << "  e = " << e->Orig()->p << " " << e->Dest()->p;
+		//cout << "  e = " << e->Orig()->p << " " << e->Dest()->p;
 		if (!comp(vertexEdge, e)) {
-			cout << endl;
+			//cout << endl;
 			break;
 		} else {
 			rightEdge = e;
-			cout << "  <<" << endl;
+			//cout << "  <<" << endl;
 		}
 	}
 	return rightEdge;
@@ -314,7 +302,7 @@ void Monotone::showVertex(Mat &img, Vertex &v, const Scalar &color) {
 }
 
 void Monotone::showTree(Mat &img) {
-	set<Edge *,EdgeComp>::iterator iter;
+	set<Edge *,EdgeCompX>::iterator iter;
 	for (iter = tree.begin(); iter != tree.end(); iter++) {
 		Edge *e = *iter;
 		// draw current edge
@@ -329,14 +317,24 @@ void Monotone::showTree(Mat &img) {
 
 void Monotone::showNewEdges(Mat &img) {
 	unsigned i;
-	cout << "new edges:" << endl;
+	//cout << "new edges:" << endl;
 	for (i = 0; i < newEdges.size(); i++) {
 		Edge *e = newEdges[i];
 		// draw current edge
 		Point p1 = e->Orig()->p;
 		Point p2 = e->Dest()->p;
-		cout << p1 << "-" << p2 << endl;
-		cv::line(img, p1, p2, Scalar(255,0,0), 3, CV_AA);
+		//cout << p1 << "-" << p2 << endl;
+		drawDashedLine(img, p1, p2, Scalar(255,0,0), 10, CV_AA);
 	}
+}
+
+
+void Monotone::insertNewEdge(Face *f, Vertex *v1, Vertex *v2) {
+	Edge *newEdge = splitFace(f, v1, v2);
+	newEdges.push_back(newEdge);
+	if (newEdge->Left() != f)
+		mesh->faces.push_back(newEdge->Left());
+	else
+		mesh->faces.push_back(newEdge->Right());
 }
 

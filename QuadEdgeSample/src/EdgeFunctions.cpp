@@ -175,7 +175,7 @@ Edge * splitFace(Face *fl, Vertex *v1, Vertex *v2) {
 
 	Face *fr = new Face();
 
-	cout << "  split vertices: " << v1->p << "-" << v2->p << endl;
+	//cout << "  split vertices: " << v1->p << "-" << v2->p << endl;
 	Edge *a = v1->getEdge();
 	Edge *b = v2->getEdge();
 	Edge *c = Edge::makeEdge(v1, v2, fl, fr);
