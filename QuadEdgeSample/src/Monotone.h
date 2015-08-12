@@ -64,7 +64,10 @@ public:
 	Monotone(Mesh *mesh, Mat &img);
 	virtual ~Monotone();
 
-	void makeMonotone(Face &f);
+	void makeMonotone(Face *f);
+	void triangulate(Face *f);
+	void clearNewEdges();
+	void closeWindows(int delay);
 
 private:
 	bool visual;
@@ -74,20 +77,23 @@ private:
 	std::set<Edge *,EdgeCompX> tree;
 	std::map<Edge *,Vertex *,EdgeCompX> helper;
 	std::vector<Edge *> newEdges;
-	const char* iter_window = "MakeMonotone iterativo";
+	const char* iter_window = "Triangulatizacao iterativa";
 
-	int  findVertexType(Edge *e);
-	Edge* findLeftEdge(Edge *e);
-	Edge* findRightEdge(Edge *e);
 	void handleStartVertex(Edge *e);
 	void handleEndVertex(Edge *e);
 	void handleSplitVertex(Edge *e);
 	void handleMergeVertex(Edge *e);
 	void handleRegularVertex(Edge *e);
+
 	void showVertex(Mat &img, Vertex &v, const Scalar &color);
 	void showTree(Mat &img);
 	void showNewEdges(Mat &img);
-	void insertNewEdge(Face *f, Vertex *v1, Vertex *v2);
+
+	Edge* insertNewEdge(Face *f, Vertex *v1, Vertex *v2);
+	double getVertexAngle(Vertex *v1, Vertex *v2, Vertex *v3);
+	int  findVertexType(Edge *e);
+	Edge* findLeftEdge(Edge *e);
+	Edge* findRightEdge(Edge *e);
 };
 
 #endif /* MONOTONE_H_ */

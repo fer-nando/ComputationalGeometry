@@ -81,14 +81,15 @@ int Mesh::generateMesh(const char *filename, Mesh &mesh, const int size) {
 
 		char d = fgetc(f);
 		printf("%c ", d);
+
+		fgets(line, 100, f);
+
 		if (d != 'f') {
-			break;
+			continue;
 		}
 
 		Face *face = new Face();
 		mesh.faces.push_back(face);
-
-		fgets(line, 100, f);
 
 		char * tok = strtok(line, " ");
 		while (tok != NULL) {

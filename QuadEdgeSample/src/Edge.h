@@ -92,7 +92,7 @@ public:
 	void setType(int type) { this->type = type; }
 
 	Edge *getEdge(Face *f) {
-		while (edge->Left() == NULL)
+		while (edge->Left() != f)
 			edge = edge->Onext();
 		return edge;
 	}

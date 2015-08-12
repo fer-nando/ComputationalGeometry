@@ -34,7 +34,7 @@ typedef struct goal_str {
 } Goal;
 
 /// Global variables
-Mat src, iter;
+Mat src, tria, iter;
 vector<Vertex> pts;
 Goal goal;
 Edge *e;
@@ -101,17 +101,36 @@ int main(int, char** argv) {
 
 	/// Draw the mesh
 	drawMesh(src, mesh.faces, line_width);
+	imshow(main_window, src);
+
+	tria = src.clone();
 
 	/// Make monotone
-	Monotone monotone(&mesh, src);
+	Monotone monotone(&mesh, tria);
 	int numFaces = mesh.faces.size();
 	for (int i = 0; i < numFaces; i++) {
-		monotone.makeMonotone(*mesh.faces[i]);
+		monotone.makeMonotone(mesh.faces[i]);
 	}
+	monotone.clearNewEdges();
+	waitKey(0);
 
 	/// Draw the mesh
-	src = Scalar(255, 255, 255);
-	drawMesh(src, mesh.faces, line_width);
+	tria = Scalar(255, 255, 255);
+	drawMesh(tria, mesh.faces, line_width);
+
+	/// Triangulate
+	numFaces = mesh.faces.size();
+	for (int i = 0; i < numFaces; i++) {
+		monotone.triangulate(mesh.faces[i]);
+	}
+	monotone.closeWindows(0);
+
+	/// Draw the mesh
+	tria = Scalar(255, 255, 255);
+	drawMesh(tria, mesh.faces, line_width);
+
+	namedWindow(iter_window, WINDOW_NORMAL);
+	imshow(iter_window, tria);
 
 	/// Choose a start point
 	e = mesh.edges[0];
@@ -124,7 +143,7 @@ int main(int, char** argv) {
 
 	while (key != esc_key) {
 
-		iter = src.clone();
+		iter = tria.clone();
 
 		switch (key) {
 		case twin_key:
@@ -212,7 +231,7 @@ int main(int, char** argv) {
 			}
 		}
 
-		imshow(main_window, iter);
+		imshow(iter_window, iter);
 
 		key = waitKey(100);
 		//cout << (char) key << "(" << key << ") pressed" << endl;

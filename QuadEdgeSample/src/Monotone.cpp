@@ -20,24 +20,16 @@
 
 using namespace std;
 
+enum Chains {
+	UNDEF_CHAIN, LEFT_CHAIN, RIGHT_CHAIN
+};
 
 enum VerticeTypes {
-	START,
-	END,
-	SPLIT,
-	MERGE,
-	REGULAR,
-	UNDEF
+	START, END, SPLIT, MERGE, REGULAR, UNDEF
 };
 
-const char * verticeTypeName[6] = {
-		"START",
-		"END",
-		"SPLIT",
-		"MERGE",
-		"REGULAR",
-		"UNDEF"
-};
+const char * verticeTypeName[6] = { "START", "END", "SPLIT", "MERGE", "REGULAR",
+		"UNDEF" };
 
 Monotone::Monotone(Mesh *mesh, Mat &img) {
 	this->mesh = mesh;
@@ -51,22 +43,15 @@ Monotone::Monotone(Mesh *mesh, Mat &img) {
 }
 
 Monotone::~Monotone() {
-	// TODO Auto-generated destructor stub
 }
 
-
-void Monotone::makeMonotone(Face &f) {
+void Monotone::makeMonotone(Face *f) {
 
 	Edge *e0, *e;
-	e0 = e = f.getEdge();
+	Vertex *v;
+	e0 = e = f->getEdge();
 
-	// initializa as estruturas de dados
-	while (!queue.empty()) {
-		queue.pop();
-	}
-	helper.clear();
-	tree.clear();
-	//newEdges.clear();
+	cout << "## MakeMonotone start" << endl;
 
 	// cria uma lista de prioridades ordenada pela coordenada y
 	do {
@@ -78,14 +63,15 @@ void Monotone::makeMonotone(Face &f) {
 	while (!queue.empty()) {
 
 		// pega o vertice com a maior prioridade (menor y)
-		Edge *e = queue.top();
-		Vertex *v = e->Orig();
+		e = queue.top();
+		v = e->Orig();
 
 		// identifica o tipo do vertice
 		int type = findVertexType(e);
-		cout << "Vertice: x=" << v->p.x << "; y=" << v->p.y << "; type=" << verticeTypeName[type] << endl;
+		cout << "Vertice: x=" << v->p.x << "; y=" << v->p.y << "; type="
+				<< verticeTypeName[type] << endl;
 
-		if(visual) {
+		if (visual) {
 			Mat img = src_img.clone();
 
 			vector<Vertex> pts;
@@ -93,11 +79,12 @@ void Monotone::makeMonotone(Face &f) {
 			if (faceOrder > 0)
 				drawPolygon(img, getPointsFromVertexList(pts), faceOrder, line_width,
 						highlight_face_color, default_edge_color, default_vertex_color);
-			rectangle(img, Point(0,0), Point(img.cols, v->p.y), Scalar(180,180,180), CV_FILLED);
+			//rectangle(img, Point(0, 0), Point(img.cols, v->p.y),
+			//		Scalar(180, 180, 180), CV_FILLED);
 
 			showNewEdges(img);
 			showTree(img);
-			showVertex(img, *v, Scalar(0,0,255));
+			showVertex(img, *v, Scalar(0, 0, 255));
 
 			addWeighted(src_img, 0.1, img, 0.9, 0, img);
 
@@ -106,50 +93,213 @@ void Monotone::makeMonotone(Face &f) {
 		}
 
 		// chama a funcao especifica para cada tipo de vertice
-		switch(type) {
+		switch (type) {
 		case START:
-			handleStartVertex(e); break;
+			handleStartVertex(e);
+			break;
 		case END:
-			handleEndVertex(e); break;
+			handleEndVertex(e);
+			break;
 		case SPLIT:
-			handleSplitVertex(e); break;
+			handleSplitVertex(e);
+			break;
 		case MERGE:
-			handleMergeVertex(e); break;
+			handleMergeVertex(e);
+			break;
 		case REGULAR:
-			handleRegularVertex(e); break;
+			handleRegularVertex(e);
+			break;
 		}
 
 		/*set<Edge *,EdgeCompX>::iterator iter;
-		cout << endl << "Tree:" << endl;
-		for (iter = tree.begin(); iter != tree.end(); iter++) {
-			Edge *e = *iter;
-			cout << "  " << e->Orig()->p << " " << e->Dest()->p << endl;
-		}
-		cout << endl;*/
+		 cout << endl << "Tree:" << endl;
+		 for (iter = tree.begin(); iter != tree.end(); iter++) {
+		 Edge *e = *iter;
+		 cout << "  " << e->Orig()->p << " " << e->Dest()->p << endl;
+		 }
+		 cout << endl;*/
 
 		// remove o vertice atual da fila
 		queue.pop();
+		cout << endl;
 	}
+
+	// limpa as estruturas de dados
+	helper.clear();
+	tree.clear();
+	//newEdges.clear();
+
+	cout << "## MakeMonotone end" << endl << endl;
 
 }
 
-int Monotone::findVertexType(Edge *e) {
+void Monotone::triangulate(Face *f) {
 
-	Vertex *v1, *v2, *v3;
+	int currChain = UNDEF_CHAIN;
+	vector<Edge *> chain;
+	Edge *e, *lastE;
+	Vertex *v;
+	e = f->getEdge();
 
-	v1 = (e->Lprev()->Orig());
-	v2 = (e->Orig());
-	v3 = (e->Dest());
+	cout << "## Triangulate start" << endl;
+
+	// cria uma lista de prioridades ordenada pela coordenada y
+	do {
+		queue.push(e);
+		e = e->Lnext();
+	} while (e != f->getEdge());
+
+	// remove o primeiro vertice e inicializa as cadeias esquerda e direita
+	lastE = e = queue.top();
+	queue.pop();
+	chain.push_back(e);
+
+	// itera sob os vertices em 'queue'
+	while (!queue.empty()) {
+
+		// pega o vertice com a maior prioridade (menor y)
+		e = queue.top();
+		v = e->Orig();
+
+		cout << "e = " << e << endl;
+
+		// identifica a proxima aresta da mesma cadeia
+		if (currChain == UNDEF_CHAIN) {
+			currChain = (lastE == e->Lnext()) ? RIGHT_CHAIN : LEFT_CHAIN;
+		}
+		Edge *next = (currChain == RIGHT_CHAIN) ? lastE->Lprev() : lastE->Lnext();
+
+		// define se o vertice esta na mesma cadeia ou do lado oposto
+		if (e != next) { // caso 1
+
+			cout << "Opposite chain" << endl;
+			currChain = (currChain == RIGHT_CHAIN) ? LEFT_CHAIN : RIGHT_CHAIN;
+
+			Edge *newEdge = NULL;
+			for (unsigned i = 1; i < chain.size(); i++) {
+				Face *f = e->Left();
+				Vertex *v1 = e->Orig();
+				Vertex *v2 = chain[i]->Orig();
+				newEdge = insertNewEdge(f, v1, v2);
+				if (currChain == RIGHT_CHAIN) {
+					e = newEdge;
+				} else {
+					lastE = newEdge->Sym();
+				}
+				cout << "  chain[i] = " << chain[i] << "; newEdge: " << newEdge << endl;
+			}
+
+			chain.clear();
+			chain.push_back(lastE);
+			chain.push_back(e);
+
+		} else { // caso 2
+
+			cout << "Same chain" << endl;
+
+			// define o angulo do vertice atual
+			Vertex *v1 = (lastE->Lprev()->Orig());
+			Vertex *v2 = (lastE->Orig());
+			Vertex *v3 = (lastE->Dest());
+			double angle = getVertexAngle(v1, v2, v3);
+			cout << "Angle: " << angle << endl;
+
+			// verifica se o angulo do vertice anterior e menor que 180
+			if (angle < 180) { // caso 2a
+
+				Edge *newEdge = NULL;
+
+				while (chain.size() > 1 && angle < 180) {
+
+					Face *f = e->Left();
+
+					chain.pop_back();
+					lastE = chain.back();
+
+					if (lastE != e->Lnext() && lastE != e->Lprev()) {
+
+						newEdge = insertNewEdge(f, v, lastE->Orig());
+
+						v1 = (lastE->Lprev()->Orig());
+						v2 = (lastE->Orig());
+						v3 = (lastE->Dest());
+						angle = getVertexAngle(v1, v2, v3);
+
+						if (currChain == RIGHT_CHAIN) {
+							e = newEdge;
+						} else {
+							chain.pop_back();
+							chain.push_back(newEdge->Sym());
+						}
+
+						cout << "  lastE = " << lastE << "; Angle: " << angle << endl;
+						cout << "  newEdge = " << newEdge << endl;
+					}
+				}
+
+				chain.push_back(e);
+
+			} else { // caso 2b
+				chain.push_back(e);
+			}
+
+		}
+
+
+		// se modo visual habilitado, atualiza a imagem
+		if (visual) {
+			Mat img = src_img.clone();
+
+			vector<Vertex> pts;
+			int faceOrder = getFaceOrder(e, pts);
+			if (faceOrder > 0)
+				drawPolygon(img, getPointsFromVertexList(pts), faceOrder, line_width,
+						highlight_face_color, default_edge_color, default_vertex_color);
+			//rectangle(img, Point(0, 0), Point(img.cols, v->p.y),
+			//		Scalar(180, 180, 180), CV_FILLED);
+
+			showNewEdges(img);
+			showTree(img);
+			showVertex(img, *v, Scalar(0, 0, 255));
+
+			addWeighted(src_img, 0.1, img, 0.9, 0, img);
+
+			imshow(iter_window, img);
+			waitKey(1000);
+		}
+
+		cout << endl;
+		lastE = e;
+		queue.pop();
+
+	}
+
+	cout << "## Triangulate end" << endl << endl;
+
+}
+
+double Monotone::getVertexAngle(Vertex *v1, Vertex *v2, Vertex *v3) {
 
 	Vec3d p1(v1->p.x, v1->p.y, 0);
 	Vec3d p2(v2->p.x, v2->p.y, 0);
 	Vec3d p3(v3->p.x, v3->p.y, 0);
-	Vec3d a = p2-p1;
-	Vec3d b = p3-p2;
+	Vec3d a = p2 - p1;
+	Vec3d b = p3 - p2;
 
 	Vec3d crossValue = a.cross(b);
-	double acosValue = acos( a.dot(b) / (norm(a) * norm(b)) ) * 180 / M_PI;
+	double acosValue = acos(a.dot(b) / (norm(a) * norm(b))) * 180 / M_PI;
 	double angle = 180.0 + sign(crossValue[2]) * acosValue;
+
+	return angle;
+}
+
+int Monotone::findVertexType(Edge *e) {
+
+	Vertex *v1 = (e->Lprev()->Orig());
+	Vertex *v2 = (e->Orig());
+	Vertex *v3 = (e->Dest());
+
+	double angle = getVertexAngle(v1, v2, v3);
 	cout << "Angle: " << angle << endl;
 
 	if (angle <= 180) {
@@ -261,7 +411,7 @@ void Monotone::handleRegularVertex(Edge *e) {
 
 Edge* Monotone::findLeftEdge(Edge *vertexEdge) {
 	Edge *leftEdge = *tree.begin();
-	set<Edge *,EdgeCompX>::iterator iter;
+	set<Edge *, EdgeCompX>::iterator iter;
 	EdgeCompX comp = tree.key_comp();
 	//cout << "Left edge:" << endl;
 	for (iter = tree.begin(); iter != tree.end(); iter++) {
@@ -280,7 +430,7 @@ Edge* Monotone::findLeftEdge(Edge *vertexEdge) {
 
 Edge* Monotone::findRightEdge(Edge *vertexEdge) {
 	Edge *rightEdge = *tree.rbegin();
-	set<Edge *,EdgeCompX>::reverse_iterator iter;
+	set<Edge *, EdgeCompX>::reverse_iterator iter;
 	EdgeCompX comp = tree.key_comp();
 	//cout << "Right edge:" << endl;
 	for (iter = tree.rbegin(); iter != tree.rend(); iter++) {
@@ -302,16 +452,16 @@ void Monotone::showVertex(Mat &img, Vertex &v, const Scalar &color) {
 }
 
 void Monotone::showTree(Mat &img) {
-	set<Edge *,EdgeCompX>::iterator iter;
+	set<Edge *, EdgeCompX>::iterator iter;
 	for (iter = tree.begin(); iter != tree.end(); iter++) {
 		Edge *e = *iter;
 		// draw current edge
 		Point p1 = e->Orig()->p;
 		Point p2 = e->Dest()->p;
-		cv::line(img, p1, p2, Scalar(0,255,0), 4, CV_AA);
+		cv::line(img, p1, p2, Scalar(0, 255, 0), 4, CV_AA);
 		// draw current edge helper
 		Vertex *v = helper[e];
-		showVertex(img, *v, Scalar(0,255,0));
+		showVertex(img, *v, Scalar(0, 255, 0));
 	}
 }
 
@@ -324,17 +474,25 @@ void Monotone::showNewEdges(Mat &img) {
 		Point p1 = e->Orig()->p;
 		Point p2 = e->Dest()->p;
 		//cout << p1 << "-" << p2 << endl;
-		drawDashedLine(img, p1, p2, Scalar(255,0,0), 10, CV_AA);
+		drawDashedLine(img, p1, p2, Scalar(255, 0, 0), 10, CV_AA);
+		//arrowedLine(img, p1, p2, Scalar(255, 0, 0), 3, CV_AA);
 	}
 }
 
-
-void Monotone::insertNewEdge(Face *f, Vertex *v1, Vertex *v2) {
+Edge* Monotone::insertNewEdge(Face *f, Vertex *v1, Vertex *v2) {
 	Edge *newEdge = splitFace(f, v1, v2);
 	newEdges.push_back(newEdge);
 	if (newEdge->Left() != f)
-		mesh->faces.push_back(newEdge->Left());
-	else
-		mesh->faces.push_back(newEdge->Right());
+		newEdge = newEdge->Sym();
+	mesh->faces.push_back(newEdge->Right());
+	return newEdge;
 }
 
+void Monotone::clearNewEdges() {
+	newEdges.clear();
+}
+
+void Monotone::closeWindows(int delay) {
+	destroyWindow(iter_window);
+	waitKey(delay);
+}
