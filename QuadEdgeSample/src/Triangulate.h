@@ -1,12 +1,12 @@
 /*
- * Monotone.h
+ * Triangulate.h
  *
  *  Created on: Aug 7, 2015
  *      Author: fernando
  */
 
-#ifndef MONOTONE_H_
-#define MONOTONE_H_
+#ifndef TRIANGULATE_H_
+#define TRIANGULATE_H_
 
 #include <set>
 #include <queue>
@@ -58,11 +58,11 @@ public:
 
 typedef std::priority_queue<Edge *,std::vector<Edge *>,EdgeCompY> PriorityQueue;
 
-class Monotone {
+class Triangulate {
 
 public:
-	Monotone(Mesh *mesh, Mat &img);
-	virtual ~Monotone();
+	Triangulate(Mesh *mesh, Mat &img, const char *win);
+	virtual ~Triangulate();
 
 	void makeMonotone(Face *f);
 	void triangulate(Face *f);
@@ -74,20 +74,24 @@ private:
 	Mat src_img;
 	Mesh *mesh;
 	PriorityQueue queue;
+	std::vector<Edge *> chain;
 	std::set<Edge *,EdgeCompX> tree;
 	std::map<Edge *,Vertex *,EdgeCompX> helper;
 	std::vector<Edge *> newEdges;
-	const char* iter_window = "Triangulatizacao iterativa";
+	const char* iter_window;
 
 	void handleStartVertex(Edge *e);
 	void handleEndVertex(Edge *e);
 	void handleSplitVertex(Edge *e);
 	void handleMergeVertex(Edge *e);
 	void handleRegularVertex(Edge *e);
+	void handleSameChain(Edge *&e, Edge *&lastE, int currChain);
+	void handleOppositeChain(Edge *&e, Edge *&lastE, int currChain);
 
 	void showVertex(Mat &img, Vertex &v, const Scalar &color);
 	void showTree(Mat &img);
 	void showNewEdges(Mat &img);
+	void showReflexChain(Mat &img, int dir);
 
 	Edge* insertNewEdge(Face *f, Vertex *v1, Vertex *v2);
 	double getVertexAngle(Vertex *v1, Vertex *v2, Vertex *v3);
@@ -96,5 +100,5 @@ private:
 	Edge* findRightEdge(Edge *e);
 };
 
-#endif /* MONOTONE_H_ */
+#endif /* TRIANGULATE_H_ */
 

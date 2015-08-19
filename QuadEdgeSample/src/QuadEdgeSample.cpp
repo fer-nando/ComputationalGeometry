@@ -15,10 +15,11 @@
 #include "MeshGenerator.h"
 #include "EdgeFunctions.h"
 #include "DrawFunctions.h"
-#include "Monotone.h"
+#include "Triangulate.h"
 
 using namespace cv;
 using namespace std;
+
 
 typedef struct goal_str {
 	bool changed;
@@ -33,7 +34,7 @@ typedef struct goal_str {
 	}
 } Goal;
 
-/// Global variables
+// Variaveis globais
 Mat src, tria, iter;
 vector<Vertex> pts;
 Goal goal;
@@ -55,9 +56,14 @@ const int next_key = 'a';
 const int prev_key = 'd';
 
 
-/// Function Headers
-void help();
-
+/**
+ * Função de callback para eventos de mouse
+ * @param event
+ * @param x
+ * @param y
+ * @param flags
+ * @param ptr
+ */
 void CallBackFunc(int event, int x, int y, int flags, void* ptr) {
 
 	if (event == EVENT_LBUTTONDOWN) {
@@ -74,20 +80,22 @@ void CallBackFunc(int event, int x, int y, int flags, void* ptr) {
 }
 
 /**
+ * Função principal
  * @function main
  */
 int main(int, char** argv) {
 
-	/// create a window
-	namedWindow(main_window, WINDOW_NORMAL);
+	// Cria uma janela
+	namedWindow(main_window);
+	namedWindow(iter_window);
 
-	//set the callback function for any mouse event
-	setMouseCallback(main_window, CallBackFunc, &goal);
-
-	/// create an image
+	// Cria uma imagem sizexsize, 24-bit (8+8+8), em branco [255,255,255]
 	src = Mat(size, size, CV_8UC3, Scalar(255, 255, 255));
 
-	/// Generate a mesh
+
+	// PARTE 1 - Cria um mesh em uma estrutura quadedge
+
+	// Gera um mesh a partir de um arquivo .obj
 	cout << "generate" << endl;
 	//int nok = Mesh::generateMesh(mesh, size);
 	int nok = Mesh::generateMesh("mesh4.obj", mesh, size);
@@ -99,48 +107,55 @@ int main(int, char** argv) {
 		exit(1);
 	}
 
-	/// Draw the mesh
+	// Desenha o mesh e mostra na janela
 	drawMesh(src, mesh.faces, line_width);
 	imshow(main_window, src);
 
+
+	// PARTE 2 - Triangularização
+
+	// Copia a imagem do mesh
 	tria = src.clone();
 
-	/// Make monotone
-	Monotone monotone(&mesh, tria);
+	Triangulate triangulate(&mesh, tria, iter_window);
+
+	// Torna todos as faces do mesh monotonas
 	int numFaces = mesh.faces.size();
 	for (int i = 0; i < numFaces; i++) {
-		monotone.makeMonotone(mesh.faces[i]);
+		triangulate.makeMonotone(mesh.faces[i]);
 	}
-	monotone.clearNewEdges();
+	triangulate.clearNewEdges();
 	waitKey(0);
 
-	/// Draw the mesh
+	// Desenha o mesh monotono
 	tria = Scalar(255, 255, 255);
 	drawMesh(tria, mesh.faces, line_width);
 
-	/// Triangulate
+	// Triangulariza todas as faces monotonas
 	numFaces = mesh.faces.size();
 	for (int i = 0; i < numFaces; i++) {
-		monotone.triangulate(mesh.faces[i]);
+		triangulate.triangulate(mesh.faces[i]);
 	}
-	monotone.closeWindows(0);
+	//triangulate.closeWindows(0);
 
-	/// Draw the mesh
+
+	// PARTE 3 - Iteração com o polígono
+
+	// Desenha o mesh
 	tria = Scalar(255, 255, 255);
 	drawMesh(tria, mesh.faces, line_width);
-
-	namedWindow(iter_window, WINDOW_NORMAL);
 	imshow(iter_window, tria);
 
-	/// Choose a start point
+	// Seta a função de callback para eventos de mouse
+	setMouseCallback(iter_window, CallBackFunc, &goal);
+
+	// Escolhe um ponto inicial
 	e = mesh.edges[0];
 	bool e_en = true, vert_en = true, face_en = true;
 	const int radius = 2 * line_width;
-
-	/// PART 2
-
 	int key;
 
+	// Loop, enquanto nao for apertado ESC
 	while (key != esc_key) {
 
 		iter = tria.clone();
@@ -182,27 +197,27 @@ int main(int, char** argv) {
 //		cout << "  prev = " << he->prev << endl;
 //		cout << "  orig = " << he->orig->p << endl;
 
-/// Draw current face
+		// Desenha a face atual
 		if (face_en) {
 			int faceOrder = getFaceOrder(e, pts);
 			if (faceOrder > 0) {
-				/// Highlight the polygon
+				// Destaca o polígono
 				drawPolygon(iter, getPointsFromVertexList(pts), faceOrder, line_width,
 						highlight_face_color, default_edge_color, default_vertex_color);
 			}
 		}
-		/// Draw current quadedge
+		// Desenha o quadedge atual
 		if (e_en) {
 			Point p1 = e->Orig()->p;
 			Point p2 = e->Dest()->p;
 			arrowedLine(iter, p1, p2, highlight_next_color, line_width, CV_AA);
 		}
-		/// Draw current vertex
+		// Desenha o vertice atual
 		if (vert_en) {
 			circle(iter, e->Orig()->p, radius, highlight_vertex_color, -1, CV_AA);
 			circle(iter, e->Dest()->p, radius, highlight_vertex_color, -1, CV_AA);
 		}
-		/// Tries to reach the goal point
+		// Tenta chegar no ponto de destino (clicado)
 		if (goal.start != NULL) {
 
 			circle(iter, *goal.dest, radius, highlight_vertex_color, -1, CV_AA);
@@ -233,6 +248,7 @@ int main(int, char** argv) {
 
 		imshow(iter_window, iter);
 
+		// Espera 100ms, ou um botao pressionado
 		key = waitKey(100);
 		//cout << (char) key << "(" << key << ") pressed" << endl;
 	}
@@ -240,13 +256,3 @@ int main(int, char** argv) {
 	return 0;
 }
 
-
-/**
- * @function help
- * @brief Indications of how to run this program and why is it for
- */
-void help() {
-	printf("\t Half-edge data structure sample\n ");
-	printf("\t---------------------------------\n ");
-	printf(" Usage: ./Half-edge \n");
-}
