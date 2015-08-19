@@ -84,14 +84,15 @@ void Triangulate::makeMonotone(Face *f) {
 		if (visual) {
 			Mat img = src_img.clone();
 
-			vector<Vertex> pts;
+			rectangle(img, Point(0, 0), Point(img.cols, v->p.y),
+					Scalar(180, 180, 180), CV_FILLED);
+
+			/*vector<Vertex> pts;
 			int faceOrder = getFaceOrder(e, pts);
 			if (faceOrder > 0)
 				drawPolygon(img, getPointsFromVertexList(pts), faceOrder, line_width,
 						highlight_face_color, default_edge_color, default_vertex_color);
-			rectangle(img, Point(0, 0), Point(img.cols, v->p.y),
-					Scalar(180, 180, 180), CV_FILLED);
-
+			*/
 			showNewEdges(img);
 			showTree(img);
 			showVertex(img, *v, Scalar(0, 0, 255));
