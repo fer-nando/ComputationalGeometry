@@ -82,7 +82,7 @@ void Triangulate::makeMonotone(Face *f) {
 				<< verticeTypeName[type] << endl;
 
 		if (visual) {
-			Mat img = src_img.clone();
+			img = src_img.clone();
 
 			rectangle(img, Point(0, 0), Point(img.cols, v->p.y),
 					Scalar(180, 180, 180), CV_FILLED);
@@ -100,7 +100,11 @@ void Triangulate::makeMonotone(Face *f) {
 			addWeighted(src_img, 0.1, img, 0.9, 0, img);
 
 			imshow(iter_window, img);
-			waitKey(000);
+
+			int key = waitKey(000);
+			if (key == 27) {
+				visual = false;
+			}
 		}
 
 		// chama a funcao especifica para cada tipo de vertice
@@ -179,6 +183,13 @@ void Triangulate::handleEndVertex(Edge *e) {
 	Face *f = e->Left();
 	if (v2->getType() == MERGE) {
 		insertNewEdge(f, v1, v2);
+
+		if (visual) {
+			showVertex(img, *v2, Scalar(0,0,255));
+			drawDashedLine(img, v1->p, v2->p, Scalar(0,0,255), 10, CV_AA);
+			imshow(iter_window, img);
+			waitKey(000);
+		}
 	}
 	tree.erase(e);
 	helper.erase(e);
@@ -191,6 +202,14 @@ void Triangulate::handleSplitVertex(Edge *e) {
 	Edge *leftEdge = findLeftEdge(e);
 
 	insertNewEdge(f, v, helper[leftEdge]);
+
+	if (visual) {
+		Vertex *vh = helper[leftEdge];
+		showVertex(img, *vh, Scalar(0,0,255));
+		drawDashedLine(img, v->p, vh->p, Scalar(0,0,255), 10, CV_AA);
+		imshow(iter_window, img);
+		waitKey(000);
+	}
 
 	helper[leftEdge] = v;
 
@@ -206,6 +225,14 @@ void Triangulate::handleMergeVertex(Edge *e) {
 
 	if (helper[prev]->getType() == MERGE) {
 		insertNewEdge(f, v, helper[prev]);
+
+		if (visual) {
+			Vertex *vh = helper[prev];
+			showVertex(img, *vh, Scalar(0,0,255));
+			drawDashedLine(img, v->p, vh->p, Scalar(0,0,255), 10, CV_AA);
+			imshow(iter_window, img);
+			waitKey(000);
+		}
 	}
 
 	tree.erase(prev);
@@ -215,6 +242,14 @@ void Triangulate::handleMergeVertex(Edge *e) {
 
 	if (helper[leftEdge]->getType() == MERGE) {
 		insertNewEdge(f, v, helper[leftEdge]);
+
+		if (visual) {
+			Vertex *vh = helper[leftEdge];
+			showVertex(img, *vh, Scalar(0,0,255));
+			drawDashedLine(img, v->p, vh->p, Scalar(0,0,255), 10, CV_AA);
+			imshow(iter_window, img);
+			waitKey(000);
+		}
 	}
 
 	helper[leftEdge] = v;
@@ -231,6 +266,15 @@ void Triangulate::handleRegularVertex(Edge *e) {
 	if (e->Orig()->p.y >= prev->Orig()->p.y) { // sim, o poligono esta a direita de v
 		if (helper[prev]->getType() == MERGE) {
 			insertNewEdge(f, v, helper[prev]);
+
+			if (visual) {
+				Vertex *vh = helper[prev];
+				showVertex(img, *vh, Scalar(0,0,255));
+				drawDashedLine(img, v->p, vh->p, Scalar(0,0,255), 10, CV_AA);
+				imshow(iter_window, img);
+				waitKey(000);
+			}
+
 		}
 		tree.erase(prev);
 		helper.erase(prev);
@@ -240,8 +284,17 @@ void Triangulate::handleRegularVertex(Edge *e) {
 	} else { // nao, o poligono esta a esquerda de v
 
 		Edge *leftEdge = findLeftEdge(e);
+
 		if (helper[leftEdge]->getType() == MERGE) {
 			insertNewEdge(f, v, helper[leftEdge]);
+
+			if (visual) {
+				Vertex *vh = helper[leftEdge];
+				showVertex(img, *vh, Scalar(0,0,255));
+				drawDashedLine(img, v->p, vh->p, Scalar(0,0,255), 10, CV_AA);
+				imshow(iter_window, img);
+				waitKey(000);
+			}
 		}
 		helper[leftEdge] = v;
 	}
@@ -297,7 +350,7 @@ void Triangulate::triangulate(Face *f) {
 
 		// se modo visual habilitado, atualiza a imagem
 		if (visual) {
-			Mat img = src_img.clone();
+			img = src_img.clone();
 
 			vector<Vertex> pts;
 			int faceOrder = getFaceOrder(e, pts);
@@ -314,7 +367,11 @@ void Triangulate::triangulate(Face *f) {
 			addWeighted(src_img, 0.1, img, 0.9, 0, img);
 
 			imshow(iter_window, img);
-			waitKey(000);
+
+			int key = waitKey(000);
+			if (key == 27) {
+				visual = false;
+			}
 		}
 
 		cout << endl;
@@ -424,35 +481,63 @@ double Triangulate::getVertexAngle(Vertex *v1, Vertex *v2, Vertex *v3) {
 }
 
 Edge* Triangulate::findLeftEdge(Edge *vertexEdge) {
-	Edge *leftEdge = *tree.begin();
+
+	Edge * leftEdge = NULL;
+	vector<Edge *> leftEdges;
 	set<Edge *, EdgeCompX>::iterator iter;
 	EdgeCompX comp = tree.key_comp();
 
+	// pega a lista de arestas a esquerda
 	for (iter = tree.begin(); iter != tree.end(); iter++) {
 		Edge *e = *iter;
 		if (comp(vertexEdge, e)) {
 			break;
 		} else {
+			leftEdges.push_back(e);
+		}
+	}
+
+	// cria uma linha horizontal na coordenada y
+	int x = vertexEdge->Orig()->p.x;
+	int y = vertexEdge->Orig()->p.y;
+	Vertex v1(0,y), v2(x,y);
+	Edge *horizontalLine = Edge::makeEdge(&v1, &v2, NULL, NULL);
+
+	if (visual)
+		line(img, v1.p, v2.p, Scalar(255, 0, 0), 3, CV_AA);
+
+	// procura pela intersecao com maior X
+	Vertex v;
+	Point pi, leftPi(0,y);
+	while (leftEdges.size() > 0) {
+		Edge *e = leftEdges.back();
+		bool intersect = intersectEdges(e, horizontalLine, &pi);
+		if (intersect && pi.x > leftPi.x) {
+			leftPi.x = pi.x;
 			leftEdge = e;
+
+			if (visual) {
+				v.p.x = pi.x;
+				v.p.y = pi.y;
+				showVertex(img, v, Scalar(255, 0, 0));
+			}
 		}
+		leftEdges.pop_back();
 	}
+
+	if (visual) {
+		v.p.x = leftPi.x;
+		v.p.y = leftPi.y;
+		showVertex(img, v, Scalar(0, 255, 255));
+		imshow(iter_window, img);
+		waitKey(0);
+	}
+
+	// limpa memoria
+	leftEdges.clear();
+	delete(horizontalLine);
+
 	return leftEdge;
-}
-
-Edge* Triangulate::findRightEdge(Edge *vertexEdge) {
-	Edge *rightEdge = *tree.rbegin();
-	set<Edge *, EdgeCompX>::reverse_iterator iter;
-	EdgeCompX comp = tree.key_comp();
-
-	for (iter = tree.rbegin(); iter != tree.rend(); iter++) {
-		Edge *e = *iter;
-		if (!comp(vertexEdge, e)) {
-			break;
-		} else {
-			rightEdge = e;
-		}
-	}
-	return rightEdge;
 }
 
 Edge* Triangulate::insertNewEdge(Face *f, Vertex *v1, Vertex *v2) {
@@ -480,7 +565,7 @@ void Triangulate::closeWindows(int delay) {
 
 
 void Triangulate::showVertex(Mat &img, Vertex &v, const Scalar &color) {
-	circle(img, v.p, 8, color, -1, CV_AA);
+	circle(img, v.p, 10, color, -1, CV_AA);
 }
 
 void Triangulate::showTree(Mat &img) {
@@ -493,7 +578,10 @@ void Triangulate::showTree(Mat &img) {
 		line(img, p1, p2, Scalar(0, 255, 0), 4, CV_AA);
 		// draw current edge helper
 		Vertex *v = helper[e];
-		showVertex(img, *v, Scalar(0, 255, 0));
+		showVertex(img, *v, Scalar(255, 0, 255));
+		// draw a line to the helper
+		if (p1 != v->p)
+			arrowedLine(img, (p1+p2)*0.5, v->p, Scalar(0, 255, 0), 3, CV_AA);
 	}
 }
 

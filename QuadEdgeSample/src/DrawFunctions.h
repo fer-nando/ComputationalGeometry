@@ -11,7 +11,7 @@
 #include <opencv2/core/core.hpp>
 
 
-const int line_width = 4;
+const int line_width = 3;
 const Scalar default_face_color = Scalar(255, 200, 200);
 const Scalar highlight_face_color = Scalar(255, 0, 0);
 const Scalar default_vertex_color = Scalar(0, 0, 0);

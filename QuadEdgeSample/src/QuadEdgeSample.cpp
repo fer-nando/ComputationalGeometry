@@ -86,8 +86,8 @@ void CallBackFunc(int event, int x, int y, int flags, void* ptr) {
 int main(int, char** argv) {
 
 	// Cria uma janela
-	namedWindow(main_window);
-	namedWindow(iter_window);
+	namedWindow(main_window, WINDOW_NORMAL);
+	namedWindow(iter_window, WINDOW_NORMAL);
 
 	// Cria uma imagem sizexsize, 24-bit (8+8+8), em branco [255,255,255]
 	src = Mat(size, size, CV_8UC3, Scalar(255, 255, 255));
@@ -96,8 +96,7 @@ int main(int, char** argv) {
 	// PARTE 1 - Cria um mesh em uma estrutura quadedge
 
 	// Gera um mesh a partir de um arquivo .obj
-	cout << "generate" << endl;
-	//int nok = Mesh::generateMesh(mesh, size);
+	cout << "generate" << endl;;
 	int nok = Mesh::generateMesh("mesh4.obj", mesh, size);
 	cout << "pos generate: " << mesh.vertices.size() << ", " << mesh.faces.size()
 			<< ", " << mesh.edges.size() << endl << endl;
@@ -255,4 +254,43 @@ int main(int, char** argv) {
 
 	return 0;
 }
+
+/*int main() {
+
+	Vertex a1(0,0), b1(10,10), c1(1,5), d1(5,5); // intersectam
+	Vertex a2(0,0), b2(10,10), c2(1,5), d2(8,9); // nao intersectam
+	Vertex a3(0,0), b3(10,10), c3(1,0), d3(11,10); // paralelas
+	Vertex a4(0,0), b4(10,10), c4(3,3), d4(15,15); // colineares
+
+	int i;
+	for (i = 0; i < 4; i++) {
+
+		bool inter;
+		Vertex a, b, c, d;
+		Point pi;
+
+		switch(i) {
+		case 0:
+			a=a1; b=b1; c=c1; d=d1; break;
+		case 1:
+			a=a2; b=b2; c=c2; d=d2; break;
+		case 2:
+			a=a3; b=b3; c=c3; d=d3; break;
+		case 3:
+			a=a4; b=b4; c=c4; d=d4; break;
+		}
+
+		Edge *e1 = Edge::makeEdge(&a,&b,NULL,NULL);
+		Edge *e2 = Edge::makeEdge(&c,&d,NULL,NULL);
+
+		inter = intersectEdges(e1, e2, &pi);
+
+		cout << "[" << i << "] Intersect = " << inter;
+		if (inter) {
+			cout << " -> " << pi;
+		}
+		cout << endl;
+	}
+
+}*/
 

@@ -19,6 +19,7 @@ Point *getPointsFromVertexList(vector<Vertex>& vertexList);
 Edge *getVerticesEdge(Vertex *v1, Vertex *v2);
 Point getFaceCentroid(Face *f);
 int leftOn(Point a, Point b, Point c);
+bool intersectEdges(Edge *a, Edge *b, Point *pi);
 
 Edge * splitFace(Face *f, Vertex *v1, Vertex *v2);
 

@@ -71,7 +71,7 @@ public:
 
 private:
 	bool visual;
-	Mat src_img;
+	Mat src_img, img;
 	Mesh *mesh;
 	PriorityQueue queue;
 	std::vector<Edge *> chain;
@@ -97,7 +97,6 @@ private:
 	double getVertexAngle(Vertex *v1, Vertex *v2, Vertex *v3);
 	int  findVertexType(Edge *e);
 	Edge* findLeftEdge(Edge *e);
-	Edge* findRightEdge(Edge *e);
 };
 
 #endif /* TRIANGULATE_H_ */
