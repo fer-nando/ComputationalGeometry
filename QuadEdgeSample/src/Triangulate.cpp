@@ -190,8 +190,8 @@ void Triangulate::handleSplitVertex(Edge *e) {
 	Face *f = e->Left();
 	Edge *leftEdge = findLeftEdge(e);
 
-
-	drawDashedLine(img, v->p, helper[leftEdge]->p, Scalar(255, 0, 0), 10, CV_AA);
+	showVertex(img, *helper[leftEdge], Scalar(0,0,255));
+	drawDashedLine(img, v->p, helper[leftEdge]->p, Scalar(0,0,255), 10, CV_AA);
 	imshow(iter_window, img);
 	waitKey(0);
 
