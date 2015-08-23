@@ -484,7 +484,7 @@ Edge* Triangulate::findLeftEdge(Edge *vertexEdge) {
 
 	// insere a aresta atual na arvore, sua posicao indicara o final das
 	// das intersecoes
-	pair<set<Edge *, EdgeCompX>::iterator,bool> end = tree.insert(vertexEdge);
+	//pair<set<Edge *, EdgeCompX>::iterator,bool> end = tree.insert(vertexEdge);
 
 	// cria uma linha horizontal na coordenada y
 	int x = vertexEdge->Orig()->p.x;
@@ -498,7 +498,7 @@ Edge* Triangulate::findLeftEdge(Edge *vertexEdge) {
 	// procura pela intersecao, a esquerda, com maior X
 	Vertex v;
 	Point pi, leftPi(0,y);
-	for (iter = tree.begin(); iter != end.first; iter++) {
+	for (iter = tree.begin(); iter != tree.end(); iter++) {
 		Edge *e = *iter;
 		bool intersect = intersectEdges(e, horizontalLine, &pi);
 		if (intersect && pi.x > leftPi.x) {
@@ -522,7 +522,7 @@ Edge* Triangulate::findLeftEdge(Edge *vertexEdge) {
 	}
 
 	// remove a aresta da arvore
-	tree.erase(end.first);
+	//tree.erase(end.first);
 
 	// limpa memoria
 	delete(horizontalLine);
