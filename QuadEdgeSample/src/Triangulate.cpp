@@ -466,16 +466,12 @@ void Triangulate::handleOppositeChain(Edge *&e, Edge *&lastE, int currChain) {
  ******************************************************************************/
 
 double Triangulate::getVertexAngle(Vertex *v1, Vertex *v2, Vertex *v3) {
+	Point a = v2->p - v1->p;
+	Point b = v3->p - v2->p;
 
-	Vec3d p1(v1->p.x, v1->p.y, 0);
-	Vec3d p2(v2->p.x, v2->p.y, 0);
-	Vec3d p3(v3->p.x, v3->p.y, 0);
-	Vec3d a = p2 - p1;
-	Vec3d b = p3 - p2;
-
-	Vec3d crossValue = a.cross(b);
+	double crossValue = a.cross(b);
 	double acosValue = acos(a.dot(b) / (norm(a) * norm(b))) * 180 / M_PI;
-	double angle = 180.0 + sign(crossValue[2]) * acosValue;
+	double angle = 180.0 + sign(crossValue) * acosValue;
 
 	return angle;
 }
