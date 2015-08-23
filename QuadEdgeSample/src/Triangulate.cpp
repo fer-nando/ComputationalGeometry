@@ -485,17 +485,10 @@ Edge* Triangulate::findLeftEdge(Edge *vertexEdge) {
 	Edge * leftEdge = NULL;
 	vector<Edge *> leftEdges;
 	set<Edge *, EdgeCompX>::iterator iter;
-	EdgeCompX comp = tree.key_comp();
 
-	// pega a lista de arestas a esquerda
-	for (iter = tree.begin(); iter != tree.end(); iter++) {
-		Edge *e = *iter;
-		if (comp(vertexEdge, e)) {
-			break;
-		} else {
-			leftEdges.push_back(e);
-		}
-	}
+	// insere a aresta atual na arvore, sua posicao indicara o final das
+	// das intersecoes
+	pair<set<Edge *, EdgeCompX>::iterator,bool> end = tree.insert(vertexEdge);
 
 	// cria uma linha horizontal na coordenada y
 	int x = vertexEdge->Orig()->p.x;
@@ -506,11 +499,11 @@ Edge* Triangulate::findLeftEdge(Edge *vertexEdge) {
 	if (visual)
 		line(img, v1.p, v2.p, Scalar(255, 0, 0), 3, CV_AA);
 
-	// procura pela intersecao com maior X
+	// procura pela intersecao, a esquerda, com maior X
 	Vertex v;
 	Point pi, leftPi(0,y);
-	while (leftEdges.size() > 0) {
-		Edge *e = leftEdges.back();
+	for (iter = tree.begin(); iter != end.first; iter++) {
+		Edge *e = *iter;
 		bool intersect = intersectEdges(e, horizontalLine, &pi);
 		if (intersect && pi.x > leftPi.x) {
 			leftPi.x = pi.x;
@@ -522,7 +515,6 @@ Edge* Triangulate::findLeftEdge(Edge *vertexEdge) {
 				showVertex(img, v, Scalar(255, 0, 0));
 			}
 		}
-		leftEdges.pop_back();
 	}
 
 	if (visual) {
@@ -533,8 +525,10 @@ Edge* Triangulate::findLeftEdge(Edge *vertexEdge) {
 		waitKey(0);
 	}
 
+	// remove a aresta da arvore
+	tree.erase(end.first);
+
 	// limpa memoria
-	leftEdges.clear();
 	delete(horizontalLine);
 
 	return leftEdge;
