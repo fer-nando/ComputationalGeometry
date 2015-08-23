@@ -98,7 +98,7 @@ int main(int, char** argv) {
 	// Gera um mesh a partir de um arquivo .obj
 	cout << "generate" << endl;
 	//int nok = Mesh::generateMesh(mesh, size);
-	int nok = Mesh::generateMesh("mesh4.obj", mesh, size);
+	int nok = Mesh::generateMesh("test.obj", mesh, size);
 	cout << "pos generate: " << mesh.vertices.size() << ", " << mesh.faces.size()
 			<< ", " << mesh.edges.size() << endl << endl;
 

@@ -71,7 +71,7 @@ public:
 
 private:
 	bool visual;
-	Mat src_img;
+	Mat src_img, img;
 	Mesh *mesh;
 	PriorityQueue queue;
 	std::vector<Edge *> chain;

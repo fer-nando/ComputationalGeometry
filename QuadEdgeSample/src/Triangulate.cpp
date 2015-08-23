@@ -82,7 +82,7 @@ void Triangulate::makeMonotone(Face *f) {
 				<< verticeTypeName[type] << endl;
 
 		if (visual) {
-			Mat img = src_img.clone();
+			img = src_img.clone();
 
 			rectangle(img, Point(0, 0), Point(img.cols, v->p.y),
 					Scalar(180, 180, 180), CV_FILLED);
@@ -189,6 +189,11 @@ void Triangulate::handleSplitVertex(Edge *e) {
 	Vertex *v = e->Orig();
 	Face *f = e->Left();
 	Edge *leftEdge = findLeftEdge(e);
+
+
+	drawDashedLine(img, v->p, helper[leftEdge]->p, Scalar(255, 0, 0), 10, CV_AA);
+	imshow(iter_window, img);
+	waitKey(0);
 
 	insertNewEdge(f, v, helper[leftEdge]);
 
