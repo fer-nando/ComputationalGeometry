@@ -151,9 +151,15 @@ int Triangulate::findVertexType(Edge *e) {
 
 	if (angle <= 180) {
 		if (v1->p.y >= v2->p.y && v3->p.y >= v2->p.y) {
-			v2->setType(START);
+			if (e->Lnext()->Orig()->getType() != START)
+				v2->setType(START);
+			else
+				v2->setType(REGULAR);
 		} else if (v1->p.y <= v2->p.y && v3->p.y <= v2->p.y) {
-			v2->setType(END);
+			if (findVertexType(e->Lnext()) != END)
+				v2->setType(END);
+			else
+				v2->setType(REGULAR);
 		} else {
 			v2->setType(REGULAR);
 		}
@@ -536,6 +542,7 @@ Edge* Triangulate::insertNewEdge(Face *f, Vertex *v1, Vertex *v2) {
 	if (newEdge->Left() != f)
 		newEdge = newEdge->Sym();
 	mesh->faces.push_back(newEdge->Right());
+	cout << "o--o new edge" << endl;
 	return newEdge;
 }
 

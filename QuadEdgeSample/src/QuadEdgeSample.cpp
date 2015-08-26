@@ -54,6 +54,7 @@ const int order_key = 'o';
 const int twin_key = 's';
 const int next_key = 'a';
 const int prev_key = 'd';
+const int random_edge_key = 'n';
 
 
 /**
@@ -97,9 +98,9 @@ int main(int, char** argv) {
 
 	// Gera um mesh a partir de um arquivo .obj
 	cout << "generate" << endl;;
-	int nok = Mesh::generateMesh("teste.obj", mesh, size);
-	cout << "pos generate: " << mesh.vertices.size() << ", " << mesh.faces.size()
-			<< ", " << mesh.edges.size() << endl << endl;
+	int nok = Mesh::generateMesh("/home/fernando/workspace/Morphologic/mesh.obj", mesh, size);
+	cout << "pos generate: v" << mesh.vertices.size() << ", f" << mesh.faces.size()
+			<< ", e" << mesh.edges.size() << endl << endl;
 
 	if (nok) {
 		cout << "Error";
@@ -136,20 +137,21 @@ int main(int, char** argv) {
 		triangulate.triangulate(mesh.faces[i]);
 	}
 	//triangulate.closeWindows(0);
-
-
-	// PARTE 3 - Iteração com o polígono
+	cout << "pos triangulate: v" << mesh.vertices.size() << ", f" << mesh.faces.size()
+				<< ", e" << mesh.edges.size() << endl << endl;
 
 	// Desenha o mesh
 	tria = Scalar(255, 255, 255);
 	drawMesh(tria, mesh.faces, line_width);
 	imshow(iter_window, tria);
 
+	// PARTE 3 - Iteração com o polígono
+
 	// Seta a função de callback para eventos de mouse
 	setMouseCallback(iter_window, CallBackFunc, &goal);
 
 	// Escolhe um ponto inicial
-	e = mesh.edges[0];
+	e = mesh.edges[rand() % mesh.vertices.size()];
 	bool e_en = true, vert_en = true, face_en = true;
 	const int radius = 2 * line_width;
 	int key;
@@ -188,6 +190,8 @@ int main(int, char** argv) {
 			cout << "face order = " << getFaceOrder(e) << endl;
 			cout << "edge order = " << getVertexOrder(e) << endl << endl;
 			break;
+		case random_edge_key:
+			e = mesh.edges[rand() % mesh.vertices.size()];
 		}
 
 //		cout << "half-edge: " << he << endl;
