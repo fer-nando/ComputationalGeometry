@@ -7,28 +7,39 @@
  using namespace cv;
  using namespace std;
 
- Mat src; Mat src_gray;
+ Mat src; Mat src_gray; Mat src_thld;
+ Mat src2; Mat src2_gray; Mat src2_thld;
  int thresh = 100;
  int max_thresh = 255;
  RNG rng(12345);
 
  /// Function header
  void thresh_callback(int, void* );
+ void ConvexHull(Mat &img, char* window, char* filename);
 
 /** @function main */
 int main( int argc, char** argv )
  {
    /// Load source image and convert it to gray
-	src = imread( "perc4.png", 1 );
+	src = imread( "perc3.png", 1 );
+	src2 = imread( "perc4.png", 1 );
 
    /// Convert image to gray and blur it
    cvtColor( src, src_gray, CV_BGR2GRAY );
+   cvtColor( src2, src2_gray, CV_BGR2GRAY );
    //blur( src_gray, src_gray, Size(5,5) );
 
+   /// Detect edges using Threshold
+   threshold( src_gray, src_thld, thresh, 255, THRESH_BINARY_INV );
+   threshold( src2_gray, src2_thld, thresh, 255, THRESH_BINARY_INV );
+
    /// Create Window
-   char* source_window = "Source";
-   namedWindow( source_window, WINDOW_AUTOSIZE );
-   imshow( source_window, src_gray );
+   char* source1_window = "Source1";
+   char* source2_window = "Source2";
+   namedWindow( source1_window, WINDOW_AUTOSIZE );
+   namedWindow( source2_window, WINDOW_AUTOSIZE );
+   imshow( source1_window, src_thld );
+   imshow( source2_window, src2_thld );
 
    createTrackbar( " Threshold:", "Source", &thresh, max_thresh, thresh_callback );
    thresh_callback( 0, 0 );
@@ -40,23 +51,33 @@ int main( int argc, char** argv )
  /** @function thresh_callback */
  void thresh_callback(int, void* )
  {
-	std::setlocale(LC_ALL, "C");
-	 FILE *f = fopen("mesh.obj", "w");
 
-   Mat src_copy = src.clone();
-   Mat threshold_output;
+	 Mat img_not(src_thld.size(), src_thld.type());
+	 Mat img_diff(src_thld.size(), src_thld.type());
+	 bitwise_not(src_thld, img_not);
+	 bitwise_and( img_not, src2_thld, img_diff);
+
+   char* diff_window = "Diff";
+   namedWindow( diff_window, WINDOW_AUTOSIZE );
+   imshow( diff_window, img_diff );
+
+	 ConvexHull(src_thld, "ConvexHull 1", "mesh1.obj");
+	 ConvexHull(img_diff, "ConvexHull diff", "mesh2.obj");
+
+ }
+
+ void ConvexHull(Mat &img, char* window, char* filename) {
+
+	 std::setlocale(LC_ALL, "C");
+	 FILE *f = fopen(filename, "w");
+
    vector<vector<Point> > contours;
    vector<Vec4i> hierarchy;
    vector<vector<int> > faces;
    int v = 0;
 
-   /// Detect edges using Threshold
-   threshold( src_gray, threshold_output, thresh, 255, THRESH_BINARY_INV );
-   //char* source_window = "Source";
-   //imshow( source_window, threshold_output );
-
    /// Find contours
-   findContours( threshold_output, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+   findContours( img, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
 
    /// Find the convex hull object for each contour
    vector<vector<Point> >hull( contours.size() );
@@ -64,7 +85,7 @@ int main( int argc, char** argv )
       {  convexHull( Mat(contours[i]), hull[i], true ); }
 
    /// Draw contours + hull results
-   Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
+   Mat drawing = Mat::zeros( img.size(), CV_8UC3 );
    for( int i = 0; i< contours.size(); i++ )
       {
         Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
@@ -109,6 +130,6 @@ int main( int argc, char** argv )
    fclose(f);
 
    /// Show in a window
-   namedWindow( "Hull demo", WINDOW_AUTOSIZE );
-   imshow( "Hull demo", drawing );
+   namedWindow( window, WINDOW_AUTOSIZE );
+   imshow( window, drawing );
  }
