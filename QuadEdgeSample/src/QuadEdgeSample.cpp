@@ -98,7 +98,7 @@ int main(int, char** argv) {
 
 	// Gera um mesh a partir de um arquivo .obj
 	cout << "generate" << endl;;
-	int nok = Mesh::generateMesh("/home/fernando/workspace/Morphologic/mesh.obj", mesh, size);
+	int nok = Mesh::generateMesh("mesh4.obj", mesh, size);
 	cout << "pos generate: v" << mesh.vertices.size() << ", f" << mesh.faces.size()
 			<< ", e" << mesh.edges.size() << endl << endl;
 

@@ -122,7 +122,7 @@ int Mesh::generateMesh(const char *filename, Mesh &mesh, const int size) {
 		for (i = 0; i < (int) elist.size(); i++) {
 			Edge *e1 = (i == 0) ? elist[elist.size()-1] : elist[i-1];
 			Edge *e2 = elist[i];
-			Edge::splice(e1->Sym()->Rnext()->Sym(), e2);
+			Edge::splice(e1->Lnext(), e2);
 		}
 
 	}
